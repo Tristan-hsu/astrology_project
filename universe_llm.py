@@ -31,7 +31,7 @@ def _hf_generator(model_id: str, max_new_tokens: int, temperature: float) -> Cal
 
 
 def _openai_generator(model_id: str, max_new_tokens: int, temperature: float) -> Callable[[str], str]:
-    client = openai.OpenAI()
+    client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
     def _generate(text: str) -> str:
         response = client.chat.completions.create(
@@ -85,6 +85,17 @@ def generate_responses(docs: List[Dict], provider: str, model_id: str) -> List[s
     return [generator(text) for text in prompts]
 
 
+def summarize(outputs: List[str], docs: List[Dict], provider: str, model_id: str) -> str:
+    """Return a single text summary of the generated horoscope lines."""
+    generator = get_generator(provider, model_id, max_new_tokens=128, temperature=0.3)
+    lines = "\n".join(outputs)
+    prompt_text = (
+        "Summarize the following astrological interpretations in a concise ":
+        "paragraph:\n" + lines
+    )
+    return generator(prompt_text)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="LLM provider demo")
     parser.add_argument(
@@ -105,8 +116,12 @@ def main() -> None:
         {"planet": "Venus", "sign": "Taurus", "sign_degree": 28.7},
     ]
 
-    for output in generate_responses(example_docs, args.provider, args.model_id):
+    outputs = generate_responses(example_docs, args.provider, args.model_id)
+    for output in outputs:
         print(output)
+
+    summary = summarize(outputs, example_docs, args.provider, args.model_id)
+    print(summary)
 
 
 if __name__ == "__main__":
