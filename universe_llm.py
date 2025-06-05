@@ -31,7 +31,7 @@ def _hf_generator(model_id: str, max_new_tokens: int, temperature: float) -> Cal
 
 
 def _openai_generator(model_id: str, max_new_tokens: int, temperature: float) -> Callable[[str], str]:
-    client = openai.OpenAI()
+    client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
     def _generate(text: str) -> str:
         response = client.chat.completions.create(
