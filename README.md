@@ -18,6 +18,7 @@ or, from inside a notebook/colab cell::
 Environment variables (optional):
     GOOGLE_TZ_API_KEY  # Google Time Zone API key, if available
     SWEPH_PATH        # Directory containing Swiss Ephemeris data files
+    OPENAI_API_KEY    # OpenAI API key for LLM features
 
 Dependencies (same as the original service):
     pip install gradio pyswisseph python-dateutil geopy timezonefinder pytz requests
