@@ -5,6 +5,7 @@ import google.generativeai as genai
 from typing import Callable, List, Dict, Any
 
 from langchain.prompts import PromptTemplate
+from langchain.chains import SequentialChain,LLMChain
 from transformers import pipeline
 
 
@@ -85,17 +86,36 @@ def generate_responses(docs: List[Dict], provider: str, model_id: str) -> List[s
     ]
     return [generator(text) for text in prompts]
 
-def summurize(inputs:List[str],astro_data: List[Dict],provider: str, model_id: str) ->str:
+def summurize(inputs:List[str],provider: str, model_id: str) ->str:
     generator = get_generator(provider, model_id, max_new_tokens=4096, temperature=0.5)
-    summurize_template = ("""You are a senior astrologer and your audience is Traditional Chinese Speaker. 
-    The following is the content:{content},
-    Summarize these astrology content into table and description of this person. 
-    After that translate the content into Traditional Chinese.""")
-    summurize_prompt = PromptTemplate.from_template(summurize_template)
-    inputs = str(inputs)
-    summurize_prompt.format(content=inputs)
+
     
-    return generator(summurize_prompt)
+    summarize_template = ("""You are a senior astrologer. 
+    The following is the content:{content},
+    Summarize these astrology content into paragraph and description of this person. 
+    """)
+    prompt_summarize_template = PromptTemplate(template=summarize_template, input_variables=['content'])
+    
+
+    translate_template = ("""Your audience is Traditional Chinese Speaker and you are senior translator of Traditional Chinese(繁體中文) and English. 
+                          Translate the following content into Traditional Chinese(繁體中文).
+                           {english_summary}""")
+    
+    prompt_translate_template= PromptTemplate(template=translate_template, input_variables=['english_summary'])
+
+    # summurize chain 
+    summary_chain = LLMChain(llm=generator, prompt=prompt_summarize_template, output_key='english_summary')
+    translate_chain = LLMChain(llm=generator, prompt=prompt_translate_template, output_key='chinese_summary')
+    
+    overall_chain = SequentialChain(chains=[summary_chain, translate_chain],
+                                      input_variables=['content'],
+                                      output_variables=['english_summary', 'chinese_summary'],
+                                      verbose= True)
+    
+    # summarize_prompt = PromptTemplate.from_template(summarize_template)
+    # prompt = [summarize_prompt.format(content=inputs)]
+    overall_chain.invoke(inputs)
+    return generator(prompt[0])
     
 
 
@@ -125,13 +145,14 @@ def main() -> None:
             {"planet":"Uranus","degree":286.8812,"sign":"Capricorn","sign_degree":16.88},
             {"planet":"Neptune","degree":287.8558,"sign":"Capricorn","sign_degree":17.86},
             {"planet":"Pluto","degree":234.1586,"sign":"Scorpio","sign_degree":24.16}]
-
-    for output in generate_responses(docs,args.provider,args.model_id):
+    text_file = open("Output.txt", "a")
+    responses = generate_responses(docs,args.provider,args.model_id)
+    for output in responses:
         print(output)
-        text_file = open("Output.txt", "w")
         text_file.write(output)
+
     
-    _summurize = summurize(output,docs,args.provider,args.model_id)
+    _summurize =summurize(responses,args.provider,args.model_id)
     print(_summurize)
     text_file.write(_summurize)
     text_file.close()
