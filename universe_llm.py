@@ -5,7 +5,6 @@ import google.generativeai as genai
 from typing import Callable, List, Dict, Any
 
 from langchain.prompts import PromptTemplate
-from langchain.chains import SequentialChain,LLMChain
 from transformers import pipeline
 
 
@@ -104,18 +103,15 @@ def summurize(inputs:List[str],provider: str, model_id: str) ->str:
     prompt_translate_template= PromptTemplate(template=translate_template, input_variables=['english_summary'])
 
     # summurize chain 
-    summary_chain = LLMChain(llm=generator, prompt=prompt_summarize_template, output_key='english_summary')
-    translate_chain = LLMChain(llm=generator, prompt=prompt_translate_template, output_key='chinese_summary')
-    
-    overall_chain = SequentialChain(chains=[summary_chain, translate_chain],
-                                      input_variables=['content'],
-                                      output_variables=['english_summary', 'chinese_summary'],
-                                      verbose= True)
-    
-    # summarize_prompt = PromptTemplate.from_template(summarize_template)
-    # prompt = [summarize_prompt.format(content=inputs)]
-    overall_chain.invoke(inputs)
-    return generator(prompt[0])
+    content = "\n".join(inputs)
+
+    summarize_prompt = prompt_summarize_template.format(content=content)
+    english_summary = generator(summarize_prompt)
+
+    translate_prompt = prompt_translate_template.format(english_summary=english_summary)
+    chinese_summary = generator(translate_prompt)
+
+    return chinese_summary
     
 
 
