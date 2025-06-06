@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 from astro_computation import astro_data
-
+from universe_llm import generate_responses,summurize
 
 import gradio as gr
 # ---------------------------------------------------------------------------
@@ -26,16 +26,33 @@ def _build_interface() -> gr.Blocks:
                 value=dt.datetime.now().strftime("%Y-%m-%d %H:%M"),
             )
             location_input = gr.Textbox(label="Location", value="Taipei")
+            llm_provider = gr.Dropdown(["huggingface", "openai", "google"],
+            label="請選擇一個選項"
+            )
+    
+            api_key = gr.Textbox(
+            label="API-key",
+            type="password",
+            placeholder="API-key"
+            )
+            model_id = gr.Textbox(
+                label="Model",
+                value="gpt-4o-mini"
+            )
         run_btn = gr.Button("Calculate")
-        output_json = gr.JSON(label="Ephemeris")
+        output= gr.Textbox(label="Ephemeris")
 
+        
         def _on_click(dt_str: str, loc: str):
             try:
-                return astro_data(dt_str, loc)
+                docs = astro_data(dt_str, loc)
+                responses = generate_responses(docs, llm_provider, model_id, api_key)
+                _summurize =summurize(responses,llm_provider, model_id, api_key)
+                return _summurize
             except Exception as exc:
                 return {"error": str(exc)}
 
-        run_btn.click(_on_click, inputs=[datetime_input, location_input], outputs=output_json)
+        run_btn.click(_on_click, inputs=[datetime_input, location_input], outputs=output)
 
     return demo
 

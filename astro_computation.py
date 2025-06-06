@@ -100,11 +100,14 @@ def _planet_positions(jd_utc: float) -> List[Dict[str, float | str]]:
         position, _ = swe.calc_ut(jd_utc, pid)
         degree = position[0]
         sign_index, sign_degree = deg_to_sign(degree)
+        speed = position[3] 
         results.append({
             "planet": name,
             "degree": round(degree, 4),
             "sign": signs[sign_index],
             "sign_degree": round(sign_degree, 2),
+            'speed': speed,
+            'retrograde': speed < 0
         })
     return results
 

@@ -12,7 +12,7 @@ from transformers import pipeline
 
 template = (
     "You are a senior astrologer. "
-    "Analyze the meaning of {planet} at {sign} {degree}\u00b0"
+    "Analyze the meaning of {planet} at {sign} {degree}, with speed {speed} and retrogarde state {retrograde}\u00b0"
 )
 prompt = PromptTemplate.from_template(template)
 
@@ -31,12 +31,15 @@ def _hf_generator(model_id: str, max_new_tokens: int, temperature: float) -> Cal
     return _generate
 
 
-def _openai_generator(model_id: str, max_new_tokens: int, temperature: float) -> Callable[[str], str]:
-    client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
+def _openai_generator(model_id: str, max_new_tokens: int, temperature: float,api_key: str = None) -> Callable[[str], str]:
+    if api_key:
+        client = openai.OpenAI(api_key=api_key)
+    else:
+        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    
     def _generate(text: str) -> str:
         response = client.chat.completions.create(
-            model='gpt-4o-mini',
+            model=model_id,
             messages=[{"role": "user", "content": text}],
             temperature=temperature,
             max_tokens=max_new_tokens,
@@ -46,8 +49,11 @@ def _openai_generator(model_id: str, max_new_tokens: int, temperature: float) ->
     return _generate
 
 
-def _google_generator(model_id: str, max_new_tokens: int, temperature: float) -> Callable[[str], str]:
-    genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+def _google_generator(model_id: str, max_new_tokens: int, temperature: float,api_key: str = None) -> Callable[[str], str]:
+    if api_key:
+        genai.configure(api_key=api_key)
+    else:
+        genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
     model = genai.GenerativeModel(model_id)
 
     def _generate(text: str) -> str:
@@ -63,30 +69,32 @@ def _google_generator(model_id: str, max_new_tokens: int, temperature: float) ->
     return _generate
 
 
-def get_generator(provider: str, model_id: str, max_new_tokens: int, temperature: float) -> Callable[[str], str]:
+def get_generator(provider: str, model_id: str, max_new_tokens: int, temperature: float, api_key: str = None) -> Callable[[str], str]:
     if provider == "huggingface":
-        return _hf_generator(model_id, max_new_tokens, temperature)
+        return _hf_generator(model_id, max_new_tokens, temperature,api_key)
     if provider == "openai":
-        return _openai_generator(model_id, max_new_tokens, temperature)
+        return _openai_generator(model_id, max_new_tokens, temperature,api_key)
     if provider == "google":
-        return _google_generator(model_id, max_new_tokens, temperature)
+        return _google_generator(model_id, max_new_tokens, temperature,api_key)
     raise ValueError(f"Unknown provider: {provider}")
 
 
-def generate_responses(docs: List[Dict], provider: str, model_id: str) -> List[str]:
-    generator = get_generator(provider, model_id, max_new_tokens=256, temperature=0.5)
+def generate_responses(docs: List[Dict], provider: str, model_id: str,api_key=None) -> List[str]:
+    generator = get_generator(provider, model_id, max_new_tokens=256, temperature=0.5, api_key=None)
     prompts = [
         prompt.format(
             planet=doc["planet"],
             sign=doc["sign"],
             degree=round(doc["sign_degree"], 2),
+            speed = doc["speed"],
+            retrograde = doc["retrograde"]
         )
         for doc in docs
     ]
     return [generator(text) for text in prompts]
 
-def summurize(inputs:List[str],provider: str, model_id: str) ->str:
-    generator = get_generator(provider, model_id, max_new_tokens=4096, temperature=0.5)
+def summurize(inputs:List[str],provider: str, model_id: str,api_key=None) ->str:
+    generator = get_generator(provider, model_id, max_new_tokens=4096, temperature=0.5, api_key=None)
 
     
     summarize_template = ("""You are a senior astrologer. 
@@ -131,16 +139,16 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    docs = [{"planet":"Sun","degree":266.7796,"sign":"Sagittarius","sign_degree":26.78},
-            {"planet":"Moon","degree":198.2242,"sign":"Libra","sign_degree":18.22},
-            {"planet":"Mercury","degree":247.8317,"sign":"Sagittarius","sign_degree":7.83},
-            {"planet":"Venus","degree":311.2985,"sign":"Aquarius","sign_degree":11.3},
-            {"planet":"Mars","degree":114.9886,"sign":"Cancer","sign_degree":24.99},
-            {"planet":"Jupiter","degree":192.105,"sign":"Libra","sign_degree":12.1},
-            {"planet":"Saturn","degree":315.0037,"sign":"Aquarius","sign_degree":15},
-            {"planet":"Uranus","degree":286.8812,"sign":"Capricorn","sign_degree":16.88},
-            {"planet":"Neptune","degree":287.8558,"sign":"Capricorn","sign_degree":17.86},
-            {"planet":"Pluto","degree":234.1586,"sign":"Scorpio","sign_degree":24.16}]
+    docs = [{"planet":"Sun","degree":266.7796,"sign":"Sagittarius","sign_degree":26.78,"speed":1.0181069731560166,"retrograde":False},
+        {"planet":"Moon","degree":198.2242,"sign":"Libra","sign_degree":18.22,"speed":13.869260023596233,"retrograde":False},
+        {"planet":"Mercury","degree":247.8317,"sign":"Sagittarius","sign_degree":7.83,"speed":1.3664351205868346,"retrograde":False},
+        {"planet":"Venus","degree":311.2985,"sign":"Aquarius","sign_degree":11.3,"speed":1.1535253056349868,"retrograde":False},
+        {"planet":"Mars","degree":114.9886,"sign":"Cancer","sign_degree":24.99,"speed":-0.2677003648667485,"retrograde":True},
+        {"planet":"Jupiter","degree":192.105,"sign":"Libra","sign_degree":12.1,"speed":0.11858796055508439,"retrograde":False},
+        {"planet":"Saturn","degree":315.0037,"sign":"Aquarius","sign_degree":15,"speed":0.09299917754771617,"retrograde":False},
+        {"planet":"Uranus","degree":286.8812,"sign":"Capricorn","sign_degree":16.88,"speed":0.05674487346380018,"retrograde":False},
+        {"planet":"Neptune","degree":287.8558,"sign":"Capricorn","sign_degree":17.86,"speed":0.03585330432602562,"retrograde":False},
+        {"planet":"Pluto","degree":234.1586,"sign":"Scorpio","sign_degree":24.16,"speed":0.03525563243877108,"retrograde":False}]
     text_file = open("Output.txt", "a")
     responses = generate_responses(docs,args.provider,args.model_id)
     for output in responses:
