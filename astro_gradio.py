@@ -1,70 +1,50 @@
-
 from __future__ import annotations
 
-
 import datetime as dt
-from astro_computation import astro_data
-from universe_llm import generate_responses,summurize
 
 import gradio as gr
-# ---------------------------------------------------------------------------
-# Swiss Ephemeris initialisation – call once at import time
-# ---------------------------------------------------------------------------
+
+from astro_computation import astro_data
+from universe_llm import generate_responses, summurize
 
 
-
-# ---------------------------------------------------------------------------
-# Gradio Interface definition
-# ---------------------------------------------------------------------------
-
-def _build_interface() -> gr.Blocks:
-    with gr.Blocks(title="Horoscope Astro Engine") as demo:
-        gr.Markdown("## Horoscope Astro Engine – Planetary Positions")
-        with gr.Row():
-            datetime_input = gr.Textbox(
-                label="Date & Time (ISO‑8601)",
-                value=dt.datetime.now().strftime("%Y-%m-%d %H:%M"),
-            )
-            location_input = gr.Textbox(label="Location", value="Taipei")
-            llm_provider = gr.Dropdown(["huggingface", "openai", "google"],
-            label="請選擇一個選項"
-            )
-    
-            api_key = gr.Textbox(
-            label="API-key",
-            type="password",
-            placeholder="API-key"
-            )
-            model_id = gr.Textbox(
-                label="Model",
-                value="gpt-4o-mini"
-            )
-        run_btn = gr.Button("Calculate")
-        output= gr.Textbox(label="Ephemeris")
-
-        
-        def _on_click(dt_str: str, loc: str):
-            try:
-                docs = astro_data(dt_str, loc)
-                responses = generate_responses(docs, llm_provider, model_id, api_key)
-                _summurize =summurize(responses,llm_provider, model_id, api_key)
-                return _summurize
-            except Exception as exc:
-                return {"error": str(exc)}
-
-        run_btn.click(_on_click, inputs=[datetime_input, location_input], outputs=output)
-
-    return demo
-
-# Instantiate the interface at import time so that external callers can do
-# `import astro_gradio; astro_gradio.demo.launch()`
-
-demo: gr.Blocks = _build_interface()
+def summarize_astrology(
+    datetime_str: str,
+    location: str,
+    provider: str,
+    api_key: str,
+    model_id: str,
+) -> str:
+    """Generate a Chinese horoscope summary for the given parameters."""
+    try:
+        docs = astro_data(datetime_str, location)
+        responses = generate_responses(docs, provider, model_id, api_key)
+        return summurize(responses, provider, model_id, api_key)
+    except Exception as exc:
+        return f"Error: {exc}"
 
 
-# ---------------------------------------------------------------------------
-# CLI entry point
-# ---------------------------------------------------------------------------
+demo = gr.Interface(
+    summarize_astrology,
+    [
+        gr.Textbox(
+            label="Date & Time (ISO‑8601)",
+            value=dt.datetime.now().strftime("%Y-%m-%d %H:%M"),
+        ),
+        gr.Textbox(label="Location", value="Taipei"),
+        gr.Dropdown(
+            ["huggingface", "openai", "google"],
+            label="請選擇一個選項",
+        ),
+        gr.Textbox(label="API-key", type="password", placeholder="API-key"),
+        gr.Textbox(label="Model", value="gpt-4o-mini"),
+    ],
+    gr.Textbox(label="Ephemeris"),
+    title="Horoscope Astro Engine",
+    description="Horoscope Astro Engine – Planetary Positions",
+    submit_btn="Calculate",
+)
+
 
 if __name__ == "__main__":
     demo.launch()
