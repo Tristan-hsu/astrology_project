@@ -12,7 +12,7 @@ from transformers import pipeline
 
 template = (
     "You are a senior astrologer. "
-    "Analyze the meaning of {planet} at {sign} {degree}, with speed {speed} and retrogarde state {retrograde}\u00b0"
+    "Analyze the meaning of {planet} at {sign} {degree}\u00b0, with speed {speed} and retrogarde state {retrograde}"
 )
 prompt = PromptTemplate.from_template(template)
 
@@ -79,8 +79,12 @@ def get_generator(provider: str, model_id: str, max_new_tokens: int, temperature
     raise ValueError(f"Unknown provider: {provider}")
 
 
-def generate_responses(docs: List[Dict], provider: str, model_id: str,api_key=None) -> List[str]:
-    generator = get_generator(provider, model_id, max_new_tokens=256, temperature=0.5, api_key=None)
+def generate_responses(docs: List[Dict], provider: str, model_id: str, api_key: str =None) -> List[str]:
+    print("before generate")
+    generator = get_generator(provider, model_id, max_new_tokens=256, temperature=0.5, api_key=api_key)
+    docs = docs['bodies']
+    print(docs)
+    
     prompts = [
         prompt.format(
             planet=doc["planet"],
@@ -91,12 +95,12 @@ def generate_responses(docs: List[Dict], provider: str, model_id: str,api_key=No
         )
         for doc in docs
     ]
+    print("after prompt")
     return [generator(text) for text in prompts]
 
-def summurize(inputs:List[str],provider: str, model_id: str,api_key=None) ->str:
-    generator = get_generator(provider, model_id, max_new_tokens=4096, temperature=0.5, api_key=None)
+def summurize(inputs:List[str],provider: str, model_id: str, api_key=None) ->str:
+    generator = get_generator(provider, model_id, max_new_tokens=4096, temperature=0.5, api_key=api_key)
 
-    
     summarize_template = ("""You are a senior astrologer. 
     The following is the content:{content},
     Summarize these astrology content into paragraph and description of this person. 

@@ -18,7 +18,9 @@ def summarize_astrology(
     """Generate a Chinese horoscope summary for the given parameters."""
     try:
         docs = astro_data(datetime_str, location)
+        print(123)
         responses = generate_responses(docs, provider, model_id, api_key)
+        print(456)
         return summurize(responses, provider, model_id, api_key)
     except Exception as exc:
         return f"Error: {exc}"
